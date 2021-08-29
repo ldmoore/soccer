@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Soccer Subs</title>
+    <link rel="stylesheet" href="style.css">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link href = "https://fonts.googleapis.com/icon?family=Material+Icons" rel = "stylesheet">
+  </head>
+  <body>
+	<button type="button" onclick="collapserOnClick(this)" class="collapsible"><i class="material-icons">assignment_ind</i> Attendance</button>
+	<div class="content" id="playerAttendanceList"></div>
+<br><br>
+<div id="structureWrapDiv">
+	<button type="button" onclick="collapserOnClick(this)" class="collapsible"><i class="material-icons">manage_accounts</i> Lineup Structure</button>
+	<div class="content" id="structureList">
+		<label for="striker_num">Striker</label>
+		<input type="number" class="structure" id="striker_num" data-code="striker" min=0 value=1><br>
+		<label for="cmid_num">Center Mid</label>
+		<input type="number" class="structure" id="cmid_num" data-code="cmid" min=0 value=2><br>
+		<label for="omid_num">Outside Mid</label>
+		<input type="number" class="structure" id="omid_num" data-code="omid" min=0 value=2><br>
+		<label for="def_num">Defense</label>
+		<input type="number" class="structure" id="def_num" data-code="def" min=0 value=2><br>
+		<label for="goalie_num">Goalie</label>
+		<input type="number" class="structure" id="goalie_num" data-code="goalie" max=1 value=1>
+	<br><br>
+	<button type="button" onclick="createChart()" class="ncbtn">Create Lineup Chart</button>
+	</div>
+	<br><br>
+</div>
+	<div id="lineupAdjustBox" hidden>
+		<button type="button" onclick="collapserOnClick(this)" class="collapsible active"><i class="material-icons">sports</i> Lineup</button>
+		<div class="content" style="display:block;">
+		<p id="invalidLineup" style="color:red;" hidden>You must specify a player for all positions</p>
+		<p id="benchedForMoreThanOne" style="color:red;" hidden><strong id="benchNum"></strong> player(s) were benched last period who will not be subbed in</p>
+		<table id="linupAdjustTable">
+		  </table>
+		  <br>
+		  <button type="button" onclick="generateLineup()" id="lineupChange" class="ncbtn">Add Starting Lineup</button>
+		  <button type="button" onclick="generateLineup(true)" id="lineupHotswap" class="ncbtn" hidden>Hotswap</button>
+		</div> 
+		  <br><br>
+	</div>
+	
+	<div id="historyWrap" hidden>
+	<button type="button" onclick="collapserOnClick(this)" class="collapsible"><i class="material-icons">history</i> Substitution History</button>
+	<div class="content">
+		<p id="history"></p>
+	</div>
+	<br><br>
+	</div>
+
+	<div id="playWrap" hidden>
+		<button type="button" onclick="collapserOnClick(this)" class="collapsible"><i class="material-icons">schedule</i> Play Breakdown</button>
+		<div class="content">
+			<p id="playHistory"></p>
+		</div>
+</div>
+    
+  </body>
+  <script src="collapse.js"></script>
+  <script src="genplayers.js"></script>
+</html>
