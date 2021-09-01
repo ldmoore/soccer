@@ -1,5 +1,6 @@
 body {
 	font-family: Verdana;
+	box-sizing: border-box;
 }
 
 /* Style the button that is used to open and close the collapsible content */
@@ -54,6 +55,8 @@ body {
 	  color: white;
 	  padding: 15px;
 	  border: none;
+	  margin-right: 10px;
+	  margin-bottom: 10px;
   }
 
   .ncbtn:active, .ncbtn:hover {

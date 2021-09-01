@@ -1,51 +1,55 @@
 //Player List
 const players = [{
 	name: "Arjun",
-	skill: 0,
-	pos_override: "striker"
+	skill: 1,
+	pos_override: ["striker", "omid"],
+	force_override: true
 }, {
 	name: "Cassie",
-	skill: 00
+	skill: 2
 }, {
 	name: "Clara",
-	skill: 0
+	skill: 2
 }, {
 	name: "John",
-	skill: 0,
-	pos_override: "def"
+	skill: 4
 }, {
 	name: "Jonas",
-	skill: 0
+	skill: 2.5
 }, {
 	name: "Risheek",
-	skill: 0
+	skill: 1.5,
+	pos_override: ["striker", "omid"],
+	force_override: true
 }, {
 	name: "Parker",
-	skill: 9
+	skill: 3
 }, {
 	name: "Gyan",
-	skill: 0
+	skill: 2.5
 }, {
 	name: "Arham",
-	skill: 0
+	skill: 1.5
 }, {
 	name: "Cole",
-	skill: 10
+	skill: 4
 }, {
 	name: "Nora",
-	skill: 0
+	skill: 2.5
 }, {
 	name: "Reyaansh",
-	skill: 0
+	skill: 1,
+	pos_override: ["striker", "omid"],
+	force_override: true
 }, {
 	name: "Hawke",
-	skill: 10
+	skill: 4
 }, {
 	name: "Anaya",
-	skill: 0
+	skill: 2
 }, {
 	name: "Jonah",
-	skill: 10
+	skill: 4
 }];
 
 Object.keys(players).forEach(p => {
@@ -54,12 +58,41 @@ Object.keys(players).forEach(p => {
 	players[p].times_sideline = 0;
 	players[p].times_playing = 0;
 	players[p].rots_goalie = 0;
+	players[p].time_on_field = 0;
+	players[p].play_history = {};
 })
 
 //Fetch Attending Players
 function fetchAttendingPlayers() {
 	let nameMap = Array.from(document.getElementsByClassName("player-check")).filter(c => c.checked).map(c => c.name);
 	return players.filter(p => nameMap.includes(p.name))
+}
+
+function attendanceSelectAll() {
+	let checks = document.getElementsByClassName("player-check");
+	for (let i = 0; i < checks.length; i++) {
+		checks[i].checked = true;
+	}
+}
+
+function attendanceDeselectAll() {
+	let checks = document.getElementsByClassName("player-check");
+	for (let i = 0; i < checks.length; i++) {
+		checks[i].checked = false;
+	}
+}
+
+function clearSubs() {
+	let drops = document.getElementsByClassName("player-dropdown");
+	for (let i = 0; i < drops.length; i++) {
+		for(var j = 0;j < drops[i].options.length;j++){
+            if(drops[i].options[j].value === drops[i].value){
+                drops[i].options[j].selected = false;
+            }
+			Array.from(drops[i].options).find(o => o.value === drops[i].dataset.switchFor).selected = true;
+        }
+		processSubPlayerChange(drops[i]);
+	}
 }
 
 //Generate Attendance List
@@ -80,6 +113,17 @@ players.forEach(p => {
 	attendanceDiv.appendChild(playerCheckLabel);
 	attendanceDiv.appendChild(document.createElement("br"));
 })
+attendanceDiv.appendChild(document.createElement("br"));
+let playerCheckSelectAll = document.createElement("button");
+playerCheckSelectAll.innerHTML = "Mark All Attending";
+playerCheckSelectAll.setAttribute("onclick", "attendanceSelectAll()");
+playerCheckSelectAll.classList.add("ncbtn");
+attendanceDiv.appendChild(playerCheckSelectAll);
+let playerCheckDeselectAll = document.createElement("button");
+playerCheckDeselectAll.innerHTML = "Mark All Not Attending";
+playerCheckDeselectAll.setAttribute("onclick", "attendanceDeselectAll()");
+playerCheckDeselectAll.classList.add("ncbtn");
+attendanceDiv.appendChild(playerCheckDeselectAll);
 
 //Lineup state
 const positionStates = {};
@@ -169,6 +213,8 @@ function processSubPlayerChange(select) {
 	} else if (!document.getElementById("benchedForMoreThanOne").hidden) document.getElementById("benchedForMoreThanOne").hidden = true;
 }
 
+let lastSubTime;
+
 function generateLineup(hotswap) {
 	const playerSelects = Array.from(document.getElementsByClassName("player-dropdown"));
 	if (!playerSelects.every(s => s.value !== "noPlayer")) return document.getElementById("invalidLineup").hidden = false;
@@ -178,6 +224,7 @@ function generateLineup(hotswap) {
 	let playerNames = aPlayers.filter(p => !Object.values(positionStates).includes(p.name));
 	document.getElementById("lineupChange").innerHTML = "Process Substitution";
 	document.getElementById("lineupHotswap").hidden = false;
+	document.getElementById("lineupClearSubs").hidden = false;
 	if (document.getElementById("historyWrap").hidden) document.getElementById("historyWrap").hidden = false;
 	if (document.getElementById("playWrap").hidden) document.getElementById("playWrap").hidden = false;
 	if (players.every(p => p.status === "")) {
@@ -206,6 +253,8 @@ function generateLineup(hotswap) {
 		}
 		if (names.includes(pl.name)) {
 			//Playing
+			let posInPlayHistory = playerSelects.find(s => s.value === pl.name).id.match(/([a-z]+)/)[1];
+			pl.play_history[posInPlayHistory] = pl.play_history[posInPlayHistory] ? pl.play_history[posInPlayHistory]++ : 1;
 			if (pl.status !== "playing") {
 				pl.consecutive = hotswap ? 0 : 1;
 				pl.status = "playing";
@@ -220,6 +269,7 @@ function generateLineup(hotswap) {
 		if (!hotswap) pl[`times_${pl.status}`]++;
 	}
 	let subSuggestions = suggestSubs();
+	playerNames = playerNames.concat(players.filter(p => !playerNames.find(pn => pn.name === p.name) && Object.values(subSuggestions).includes(p.name)));
 	let processSubChangesPost = [];
 	tableTrs.forEach(tr => {
 		let children = Array.from(tr.children);
@@ -240,7 +290,7 @@ function generateLineup(hotswap) {
 		playerDropdown.dataset.position = tr.dataset.position;
 		
 		let option = document.createElement("option");
-			if (subSuggestions[positionStates[tr.dataset.position]]) option.selected = true;
+			if (!subSuggestions[positionStates[tr.dataset.position]]) option.selected = true;
 			option.value = positionStates[tr.dataset.position];
 			option.text = "No Substitution Selected";
 			playerDropdown.appendChild(option);
@@ -299,34 +349,80 @@ function suggestSubs() {
 		if (b.consecutive !== a.consecutive) return (b.consecutive > a.consecutive) ? 1 : -1;
 		else return (b.skill > a.skill) ? 1 : -1;
 	}).slice(0, availablePositionNum);
-	console.log(subs);
-	let pos_override_subs = subs.filter(s => s.pos_override);
-	let neededPositions = pos_override_subs.map(poso => poso.pos_override);
+	let pos_override_subs = subs.filter(s => s.pos_override && s.pos_override.length);
+	let neededPositions = [].concat.apply([], pos_override_subs.map(s => s.pos_override));
 	let currentPlaying = players.filter(p => p.status === "playing");
 	let subLine = currentPlaying.filter(p => !p.goalie).sort(function (a, b) {
 		if (b.consecutive !== a.consecutive) return (b.consecutive > a.consecutive) ? 1 : -1;
 		else if (b.formerGoalie) return -1;
 		else if (a.formerGoalie) return 1;
+		else if (neededPositions.includes(getPlayerPosition(a)) && neededPositions.includes(getPlayerPosition(b))) return (a.skill > b.skill) ? 1 : -1;
 		else if (neededPositions.includes(getPlayerPosition(a))) return -1;
 		else if (neededPositions.includes(getPlayerPosition(b))) return 1;
 		else return (a.skill > b.skill) ? 1 : -1;
 	}).slice(0, subs.length);
+	console.debug(subLine.map(s => `${s.name}, ${s.skill}, ${s.consecutive}`).join("\n"));
 	let availablePositions = {};
 	let subSuggestions = {};
 	subLine.forEach(inp => {
 		availablePositions[getPlayerPosition(inp)] = inp.name;
 	});
 	for (let sub of pos_override_subs) {
-		if (availablePositions[sub.pos_override]) {
-			subSuggestions[availablePositions[sub.pos_override]] = sub.name;
+		let subOutPos = Object.keys(availablePositions).find(pos => sub.pos_override.includes(pos));
+		if (!subOutPos) continue;
+			subSuggestions[availablePositions[subOutPos]] = sub.name;
 			subs.splice(subs.findIndex(sl => sl.name === sub.name), 1);
-			subLine.splice(subLine.findIndex(sl => sl.name === availablePositions[sub.pos_override]), 1);
-			delete availablePositions[sub.pos_override];
-		}
+			subLine.splice(subLine.findIndex(sl => sl.name === availablePositions[subOutPos]), 1);
+			delete availablePositions[subOutPos];
 	}
 	for (let sub of subs) {
 		subSuggestions[subLine[0].name] = sub.name;
 		subLine.shift();
 	}
+
+	//Check for issues with force_override
+	function swapPlayers (p1, p2) {
+		console.log("trading", p1, p2)
+		if (Object.values(subSuggestions).includes(p1) && Object.values(subSuggestions).includes(p2)) {
+			let swapP2InFor = Object.keys(subSuggestions).find(k => subSuggestions[k] === p1);
+			console.log(p2, "subbed in for", swapP2InFor);
+			let swapP1InFor = Object.keys(subSuggestions).find(k => subSuggestions[k] === p2);
+			console.log(p1, "subbed in for", swapP1InFor);
+			subSuggestions[swapP2InFor] = p2;
+			subSuggestions[swapP1InFor] = p1;
+			return;
+		} else {
+			let valueAlreadyValue = Object.values(subSuggestions).includes(p1) ? p1 : p2;
+			let valueNotValue = valueAlreadyValue === p1 ? p2 : p1;
+			console.log(valueAlreadyValue, "is value but ", valueNotValue, "is not");
+			console.log(valueAlreadyValue, "is", Object.keys(subSuggestions).find(k => subSuggestions[k] === valueAlreadyValue));
+			subSuggestions[Object.keys(subSuggestions).find(k => subSuggestions[k] === valueAlreadyValue)] = valueNotValue;
+			subSuggestions[valueNotValue] = valueAlreadyValue;
+			return;
+		}
+	}
+	console.log(pos_override_subs);
+	for (let sub of pos_override_subs.filter(s => s.force_override)) {
+		let subbedOut = Object.keys(subSuggestions).find(subOut => subSuggestions[subOut] === sub.name);
+		console.log(subbedOut);
+		if (!sub.pos_override.includes(getPlayerPosition({ name: subbedOut }))) {
+			let posToTrade = getPlayerPosition({ name: subbedOut });
+			console.log(posToTrade);
+			//Shuffle on-field players
+			/**
+			 * If someone has NOT played [prevented position] and is in [wanted position] give it to them
+			 * If everyone has played [prevented position], find [wanted position] who prefers [prevented position]
+			 * Make a random choice
+			 */
+			let newPlayerList = currentPlaying.filter(pl => !pl.goalie).map(cp => !subSuggestions[cp.name] ? cp : players.find(p => p.name === subSuggestions[cp.name]));
+			console.log(newPlayerList)
+			//TODO make sure trading from selected player is within override specs
+			if (newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && !Object.keys(p.play_history).includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && !Object.keys(p.play_history).includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p))).name);
+			else if (newPlayerList.find(p => p.name !== sub.name && p.pos_override && p.pos_override.includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && p.pos_override && p.pos_override.includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p))).name);
+			else if (newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p))).name);
+			else swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p))).name);
+		}
+	}
+
 	return subSuggestions;
 }
