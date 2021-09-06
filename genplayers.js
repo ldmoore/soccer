@@ -211,6 +211,7 @@ function processSubPlayerChange(select) {
 		document.getElementById("benchedForMoreThanOne").hidden = false;
 		document.getElementById("benchNum").innerHTML = numWithoutPos.toString();
 	} else if (!document.getElementById("benchedForMoreThanOne").hidden) document.getElementById("benchedForMoreThanOne").hidden = true;
+	document.getElementById("benchedList").innerHTML = aPlayers.map(ap => ap.name).filter(ap => !Object.values(positionStates).includes(ap)).join("<br>");
 }
 
 let lastSubTime;
@@ -225,6 +226,7 @@ function generateLineup(hotswap) {
 	document.getElementById("lineupChange").innerHTML = "Process Substitution";
 	document.getElementById("lineupHotswap").hidden = false;
 	document.getElementById("lineupClearSubs").hidden = false;
+	document.getElementById("benchListWrap").hidden = false;
 	if (document.getElementById("historyWrap").hidden) document.getElementById("historyWrap").hidden = false;
 	if (document.getElementById("playWrap").hidden) document.getElementById("playWrap").hidden = false;
 	if (players.every(p => p.status === "")) {
