@@ -12,7 +12,8 @@ const players = [{
 	skill: 2
 }, {
 	name: "John",
-	skill: 4
+	skill: 4,
+	pos_override: ["cmid", "def"]
 }, {
 	name: "Jonas",
 	skill: 2.5
@@ -29,10 +30,13 @@ const players = [{
 	skill: 2.5
 }, {
 	name: "Arham",
-	skill: 1.5
+	skill: 1.5,
+	pos_override: ["striker", "cmid", "omid"],
+	force_override: true
 }, {
 	name: "Cole",
-	skill: 4
+	skill: 4,
+	pos_override: ["cmid", "def"]
 }, {
 	name: "Nora",
 	skill: 2.5
@@ -43,13 +47,15 @@ const players = [{
 	force_override: true
 }, {
 	name: "Hawke",
-	skill: 4
+	skill: 4,
+	pos_override: ["cmid", "def"]
 }, {
 	name: "Anaya",
 	skill: 2
 }, {
 	name: "Jonah",
-	skill: 4
+	skill: 4,
+	pos_override: ["cmid", "def"]
 }];
 
 Object.keys(players).forEach(p => {
@@ -340,6 +346,7 @@ function updatePlaytime() {
 }
 
 function getPlayerPosition(player) {
+	console.log(positionStates, player)
 	return Object.keys(positionStates).find(ps => positionStates[ps] === player.name).match(/([a-z]+)/)[1];
 }
 
@@ -376,6 +383,24 @@ function suggestSubs() {
 			subs.splice(subs.findIndex(sl => sl.name === sub.name), 1);
 			subLine.splice(subLine.findIndex(sl => sl.name === availablePositions[subOutPos]), 1);
 			delete availablePositions[subOutPos];
+	}
+	for (let sub of subs) {
+		let playerToTrade = subLine.find(p => p.name !== sub.name && !Object.keys(sub.play_history).includes(getPlayerPosition(p)));
+		if (playerToTrade) {
+			subSuggestions[playerToTrade.name] = sub.name;
+			subs.splice(subs.findIndex(sl => sl.name === sub.name), 1);
+			subLine.splice(subLine.findIndex(sl => sl.name === playerToTrade.name), 1);
+			continue;
+		}
+		let subPlayHistoryLast = Object.keys(sub.play_history).reduce((a, b) => sub.play_history[a] < sub.play_history[b] ? a : b , "");
+		console.log(subPlayHistoryLast)
+		let playerToTradeWithLowest = subLine.find(p => p.name !== sub.name && subPlayHistoryLast === getPlayerPosition(p));
+		if (playerToTradeWithLowest) {
+			subSuggestions[playerToTradeWithLowest.name] = sub.name;
+			subs.splice(subs.findIndex(sl => sl.name === sub.name), 1);
+			subLine.splice(subLine.findIndex(sl => sl.name === playerToTradeWithLowest.name), 1);
+			continue;
+		}
 	}
 	for (let sub of subs) {
 		subSuggestions[subLine[0].name] = sub.name;
@@ -418,11 +443,11 @@ function suggestSubs() {
 			 */
 			let newPlayerList = currentPlaying.filter(pl => !pl.goalie).map(cp => !subSuggestions[cp.name] ? cp : players.find(p => p.name === subSuggestions[cp.name]));
 			console.log(newPlayerList)
-			//TODO make sure trading from selected player is within override specs
-			if (newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && !Object.keys(p.play_history).includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && !Object.keys(p.play_history).includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p))).name);
-			else if (newPlayerList.find(p => p.name !== sub.name && p.pos_override && p.pos_override.includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && p.pos_override && p.pos_override.includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p))).name);
-			else if (newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p))).name);
-			else swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p))).name);
+			
+			if (newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && !Object.keys(p.play_history).includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && !Object.keys(p.play_history).includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p))).name);
+			else if (newPlayerList.find(p => p.name !== sub.name && p.pos_override && p.pos_override.includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && p.pos_override && p.pos_override.includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p))).name);
+			else if (newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p))).name);
+			else swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p))).name);
 		}
 	}
 
