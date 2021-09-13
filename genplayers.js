@@ -1,61 +1,54 @@
 //Player List
 const players = [{
 	name: "Arjun",
-	skill: 1,
-	pos_override: ["striker", "omid"],
-	force_override: true
+	rank: 14
 }, {
 	name: "Cassie",
-	skill: 2
+	rank: 11
 }, {
 	name: "Clara",
-	skill: 2
+	rank: 10
 }, {
 	name: "John",
-	skill: 4,
-	pos_override: ["cmid", "def"]
+	rank: 4,
+	aSquad: true
 }, {
 	name: "Jonas",
-	skill: 2.5
+	rank: 7
 }, {
 	name: "Risheek",
-	skill: 1.5,
-	pos_override: ["striker", "omid"],
-	force_override: true
+	rank: 13
 }, {
 	name: "Parker",
-	skill: 3
+	rank: 5,
+	aSquad: true
 }, {
 	name: "Gyan",
-	skill: 2.5
+	rank: 6
 }, {
 	name: "Arham",
-	skill: 1.5,
-	pos_override: ["striker", "cmid", "omid"],
-	force_override: true
+	rank: 12
 }, {
 	name: "Cole",
-	skill: 4,
-	pos_override: ["cmid", "def"]
+	rank: 1,
+	aSquad: true
 }, {
 	name: "Nora",
-	skill: 2.5
+	rank: 8
 }, {
 	name: "Reyaansh",
-	skill: 1,
-	pos_override: ["striker", "omid"],
-	force_override: true
+	rank: 15
 }, {
 	name: "Hawke",
-	skill: 4,
-	pos_override: ["cmid", "def"]
+	rank: 2,
+	aSquad: true
 }, {
 	name: "Anaya",
-	skill: 2
+	rank: 9
 }, {
 	name: "Jonah",
-	skill: 4,
-	pos_override: ["cmid", "def"]
+	rank: 3,
+	aSquad: true
 }];
 
 Object.keys(players).forEach(p => {
@@ -346,8 +339,7 @@ function updatePlaytime() {
 }
 
 function getPlayerPosition(player) {
-	console.log(positionStates, player)
-	return Object.keys(positionStates).find(ps => positionStates[ps] === player.name).match(/([a-z]+)/)[1];
+	return Object.keys(positionStates).find(ps => positionStates[ps] === player.name);
 }
 
 function suggestSubs() {
@@ -356,100 +348,44 @@ function suggestSubs() {
 	if (positionStates["goalie0"]) availablePositionNum--;
 	let subs = players.filter(p => p.status !== "playing" && aPlayers.find(ap => ap.name === p.name)).sort(function (a, b) {
 		if (b.consecutive !== a.consecutive) return (b.consecutive > a.consecutive) ? 1 : -1;
-		else return (b.skill > a.skill) ? 1 : -1;
+		else return (b.rank > a.rank) ? 1 : -1;
 	}).slice(0, availablePositionNum);
-	let pos_override_subs = subs.filter(s => s.pos_override && s.pos_override.length);
-	let neededPositions = [].concat.apply([], pos_override_subs.map(s => s.pos_override));
 	let currentPlaying = players.filter(p => p.status === "playing");
+	let posMap = {};
+	currentPlaying.forEach(inp => {
+		posMap[getPlayerPosition(inp)] = inp.name;
+	});
 	let subLine = currentPlaying.filter(p => !p.goalie).sort(function (a, b) {
 		if (b.consecutive !== a.consecutive) return (b.consecutive > a.consecutive) ? 1 : -1;
 		else if (b.formerGoalie) return -1;
 		else if (a.formerGoalie) return 1;
-		else if (neededPositions.includes(getPlayerPosition(a)) && neededPositions.includes(getPlayerPosition(b))) return (a.skill > b.skill) ? 1 : -1;
-		else if (neededPositions.includes(getPlayerPosition(a))) return -1;
-		else if (neededPositions.includes(getPlayerPosition(b))) return 1;
-		else return (a.skill > b.skill) ? 1 : -1;
+		else return (b.rank > a.rank) ? 1 : -1;
 	}).slice(0, subs.length);
-	console.debug(subLine.map(s => `${s.name}, ${s.skill}, ${s.consecutive}`).join("\n"));
-	let availablePositions = {};
 	let subSuggestions = {};
-	subLine.forEach(inp => {
-		availablePositions[getPlayerPosition(inp)] = inp.name;
-	});
-	for (let sub of pos_override_subs) {
-		let subOutPos = Object.keys(availablePositions).find(pos => sub.pos_override.includes(pos));
-		if (!subOutPos) continue;
-			subSuggestions[availablePositions[subOutPos]] = sub.name;
-			subs.splice(subs.findIndex(sl => sl.name === sub.name), 1);
-			subLine.splice(subLine.findIndex(sl => sl.name === availablePositions[subOutPos]), 1);
-			delete availablePositions[subOutPos];
+	let newPlayerList = currentPlaying.filter(pl => !pl.goalie && !subLine.find(sp => sp.name === pl.name)).concat(subs);
+	function checkDefenseAbility(player) {
+		if (!player.play_history["def"] || player.play_history["def"] < 2) return true;
+		else return false;
 	}
-	for (let sub of subs) {
-		let playerToTrade = subLine.find(p => p.name !== sub.name && !Object.keys(sub.play_history).includes(getPlayerPosition(p)));
-		if (playerToTrade) {
-			subSuggestions[playerToTrade.name] = sub.name;
-			subs.splice(subs.findIndex(sl => sl.name === sub.name), 1);
-			subLine.splice(subLine.findIndex(sl => sl.name === playerToTrade.name), 1);
-			continue;
-		}
-		let subPlayHistoryLast = Object.keys(sub.play_history).reduce((a, b) => sub.play_history[a] < sub.play_history[b] ? a : b , "");
-		console.log(subPlayHistoryLast)
-		let playerToTradeWithLowest = subLine.find(p => p.name !== sub.name && subPlayHistoryLast === getPlayerPosition(p));
-		if (playerToTradeWithLowest) {
-			subSuggestions[playerToTradeWithLowest.name] = sub.name;
-			subs.splice(subs.findIndex(sl => sl.name === sub.name), 1);
-			subLine.splice(subLine.findIndex(sl => sl.name === playerToTradeWithLowest.name), 1);
-			continue;
-		}
+	let filledPositions = [];
+	function setPlayer (player, pos) {
+		console.log(player.name, "sent to", pos);
+		subSuggestions[posMap[pos]] = player.name;
+		filledPositions.push(pos);
 	}
-	for (let sub of subs) {
-		subSuggestions[subLine[0].name] = sub.name;
-		subLine.shift();
+	newPlayerList = newPlayerList.sort((a, b) => a.rank - b.rank);
+	for (let i = 0; i < newPlayerList.length; i++) {
+		let player = newPlayerList[i];
+		console.log("Running for", player.name);
+		//NOTE: i is nth player-1 due to array structure
+		if (i === 0) setPlayer(player, checkDefenseAbility(player) ? "def0" : "cmid0");
+		else if (i === 1) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : (filledPositions.includes("cmid0") ? "cmid1" : "cmid0"));
+		else if (i === 2) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : "striker0");
+		else if (i === 3) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : (player.aSquad ? "strker0" : (!filledPositions.includes("cmid1") ? "cmid1" : "omid0")));
+		else if (i === 4) setPlayer(player, "def1");
+		else if (i === 5) setPlayer(player, `omid${filledPositions.includes("omid0") ? "1" : "0"}`);
+		else if (i === 6) setPlayer(player, !filledPositions.includes("striker0") ? "striker0" : `omid${filledPositions.includes("omid0") ? "1" : "0"}`);
 	}
-
-	//Check for issues with force_override
-	function swapPlayers (p1, p2) {
-		console.log("trading", p1, p2)
-		if (Object.values(subSuggestions).includes(p1) && Object.values(subSuggestions).includes(p2)) {
-			let swapP2InFor = Object.keys(subSuggestions).find(k => subSuggestions[k] === p1);
-			console.log(p2, "subbed in for", swapP2InFor);
-			let swapP1InFor = Object.keys(subSuggestions).find(k => subSuggestions[k] === p2);
-			console.log(p1, "subbed in for", swapP1InFor);
-			subSuggestions[swapP2InFor] = p2;
-			subSuggestions[swapP1InFor] = p1;
-			return;
-		} else {
-			let valueAlreadyValue = Object.values(subSuggestions).includes(p1) ? p1 : p2;
-			let valueNotValue = valueAlreadyValue === p1 ? p2 : p1;
-			console.log(valueAlreadyValue, "is value but ", valueNotValue, "is not");
-			console.log(valueAlreadyValue, "is", Object.keys(subSuggestions).find(k => subSuggestions[k] === valueAlreadyValue));
-			subSuggestions[Object.keys(subSuggestions).find(k => subSuggestions[k] === valueAlreadyValue)] = valueNotValue;
-			subSuggestions[valueNotValue] = valueAlreadyValue;
-			return;
-		}
-	}
-	console.log(pos_override_subs);
-	for (let sub of pos_override_subs.filter(s => s.force_override)) {
-		let subbedOut = Object.keys(subSuggestions).find(subOut => subSuggestions[subOut] === sub.name);
-		console.log(subbedOut);
-		if (!sub.pos_override.includes(getPlayerPosition({ name: subbedOut }))) {
-			let posToTrade = getPlayerPosition({ name: subbedOut });
-			console.log(posToTrade);
-			//Shuffle on-field players
-			/**
-			 * If someone has NOT played [prevented position] and is in [wanted position] give it to them
-			 * If everyone has played [prevented position], find [wanted position] who prefers [prevented position]
-			 * Make a random choice
-			 */
-			let newPlayerList = currentPlaying.filter(pl => !pl.goalie).map(cp => !subSuggestions[cp.name] ? cp : players.find(p => p.name === subSuggestions[cp.name]));
-			console.log(newPlayerList)
-			
-			if (newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && !Object.keys(p.play_history).includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && !Object.keys(p.play_history).includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p))).name);
-			else if (newPlayerList.find(p => p.name !== sub.name && p.pos_override && p.pos_override.includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && p.pos_override && p.pos_override.includes(posToTrade) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p))).name);
-			else if (newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p)))) swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p))).name);
-			else swapPlayers(sub.name, newPlayerList.find(p => p.name !== sub.name && (p.force_override ? p.pos_override.includes(posToTrade) : true) && sub.pos_override.includes(getPlayerPosition(p.status === "sideline" ? players.find(pla => pla.name === Object.keys(subSuggestions).find(k => subSuggestions[k] === p.name)) : p))).name);
-		}
-	}
-
+	console.log(subSuggestions)
 	return subSuggestions;
 }
