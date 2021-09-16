@@ -59,7 +59,9 @@ Object.keys(players).forEach(p => {
 	players[p].rots_goalie = 0;
 	players[p].time_on_field = 0;
 	players[p].play_history = {};
-})
+});
+
+let subSuggestRemoveSafeguards = false;
 
 //Fetch Attending Players
 function fetchAttendingPlayers() {
@@ -81,16 +83,33 @@ function attendanceDeselectAll() {
 	}
 }
 
+function resetDrop(drop, drops) {
+	for(var j = 0;j < drop.options.length;j++){
+		console.log(`Attempting to remove ${drop.value} from ${drop.id}`)
+		if(drop.options[j].value === drop.value){
+			drop.options[j].selected = false;
+		}
+		if (Array.from(drop.options).find(o => o.value === drop.dataset.switchFor)) Array.from(drop.options).find(o => o.value === drop.dataset.switchFor).selected = true;
+		else if (!Object.values(positionStates).includes(drop.dataset.switchFor)) {
+			let option = document.createElement("option");
+				option.value = drop.dataset.switchFor;
+				option.text = "No Substitution Selected";
+				drop.prepend(option);
+		} else {
+			console.debug(`Needing to remove ${drop.dataset.switchFor} from somewhere`)
+			let repD = drops.find(d => d.value === drop.dataset.switchFor);
+			resetDrop(repD, drops);
+			processSubPlayerChange(repD);
+			Array.from(drop.options).find(o => o.value === drop.dataset.switchFor).selected = true;
+		}
+	}
+	processSubPlayerChange(drop);
+}
+
 function clearSubs() {
-	let drops = document.getElementsByClassName("player-dropdown");
+	let drops = Array.from(document.getElementsByClassName("player-dropdown"));
 	for (let i = 0; i < drops.length; i++) {
-		for(var j = 0;j < drops[i].options.length;j++){
-            if(drops[i].options[j].value === drops[i].value){
-                drops[i].options[j].selected = false;
-            }
-			Array.from(drops[i].options).find(o => o.value === drops[i].dataset.switchFor).selected = true;
-        }
-		processSubPlayerChange(drops[i]);
+		resetDrop(drops[i], drops);
 	}
 }
 
@@ -124,14 +143,46 @@ playerCheckDeselectAll.setAttribute("onclick", "attendanceDeselectAll()");
 playerCheckDeselectAll.classList.add("ncbtn");
 attendanceDiv.appendChild(playerCheckDeselectAll);
 
+let goalieDrop = document.getElementById("goalieSelectStart");
+goalieDrop.id = `goalieDropdown`;
+goalieDrop.dataset.position = `goalie0`;
+		
+		let option = document.createElement("option");
+			option.selected = true;
+			option.value = "noPlayer";
+			option.text = "No Goalie Selected";
+			goalieDrop.appendChild(option);
+			players.forEach(pl => {
+			let option = document.createElement("option");
+			option.value = pl.name;
+			option.text = pl.name;
+			goalieDrop.appendChild(option);
+		});
+
 //Lineup state
 const positionStates = {};
 //Create starting lineup generator from structure
 function createChart() {
+	let processFirstSubChangesPost = [];
 	const structureNums = document.getElementsByClassName("structure");
 	let positions = Array.from(structureNums).map(s => [s.labels[0].innerHTML, s.dataset.code, s.value]);
+	if (positions.find(p => p[1] === "goalie") && document.getElementById("goalieDropdown").value === "noPlayer") return document.getElementById("invalidGoalie").hidden = false;
+	if (document.getElementById("invalidGoalie").hidden === false) document.getElementById("invalidGoalie").hidden = true;
 	let table = document.getElementById("linupAdjustTable");
 	let playersHere = fetchAttendingPlayers();
+	if (positions.find(p => p[1] === "goalie") && document.getElementById("goalieDropdown").value !== "noPlayer") positionStates["goalie0"] = document.getElementById("goalieDropdown").value;
+	//Quick loop to fill positionStates
+	positions.forEach(p => {
+		for (let i = 0; i < parseInt(p[2]); i++) {
+			if (!positionStates[`${p[1]}${i}`]) positionStates[`${p[1]}${i}`] = `${p[1]}${i}`;
+		}
+	})
+	let aSquadHere = playersHere.filter(p => p.aSquad && positionStates["goalie0"] !== p.name).sort((a, b) => a.rank - b.rank);
+	let startingASquad = aSquadHere.slice(0, aSquadHere.length-(playersHere.length === players.length ? 2 : 1));
+	let startingBSquad = playersHere.filter(p => !p.aSquad && positionStates["goalie0"] !== p.name).sort((a, b) => a.rank - b.rank).slice(0, Object.keys(positionStates).length-1-startingASquad.length);
+	let lineup = startingASquad.concat(startingBSquad);
+	let subSuggestions = suggestSubsFromLineupList(lineup, positionStates);
+	console.log(subSuggestions)
 	positions.forEach(p => {
 		for (let i = 0; i < parseInt(p[2]); i++) {
 		let playerDropdown = document.createElement("select");
@@ -139,16 +190,15 @@ function createChart() {
 		playerDropdown.classList.add("player-dropdown");
 		playerDropdown.id = `${p[1]}${i}`
 		playerDropdown.dataset.position = p[1];
-		positionStates[`${p[1]}${i}`] = "noPlayer";
 		
 		let option = document.createElement("option");
-			option.selected = true;
 			option.value = "noPlayer";
 			option.text = "No Player Selected";
 			playerDropdown.appendChild(option);
 			playersHere.forEach(pl => {
 			let option = document.createElement("option");
 			option.value = pl.name;
+			if (subSuggestions[`${p[1]}${i}`] === pl.name || positionStates[`${p[1]}${i}`] === pl.name) option.selected = true;
 			option.text = pl.name;
 			playerDropdown.appendChild(option);
 		});
@@ -164,10 +214,15 @@ function createChart() {
 		let selectTd = tr.appendChild(document.createElement("td"));
 		selectTd.appendChild(playerDropdown);
 		tr.appendChild(selectTd);
+		processFirstSubChangesPost.push(tr.dataset.position);
 
 		document.getElementById("structureWrapDiv").style.display = "none";
 		document.getElementById("lineupAdjustBox").hidden = false;
 		}
+	});
+
+	processFirstSubChangesPost.forEach(trpos => {
+		processStartPlayerChange(document.getElementById(trpos));
 	});
 }
 
@@ -177,8 +232,8 @@ function processStartPlayerChange(select) {
 		const playerSelects = document.getElementsByClassName("player-dropdown");
 		Array.from(playerSelects).forEach(s => {
 			if (s.id !== select.id) {
-				if (select.value !== "noPlayer") Array.from(s.children).find(e => e.value === select.value).remove(); 
-				if (oldValue !== "noPlayer") {
+				if (select.value !== "noPlayer" && Array.from(s.children).find(e => e.value === select.value)) Array.from(s.children).find(e => e.value === select.value).remove(); 
+				if (oldValue !== "noPlayer" && players.find(p => p.name === oldValue)) {
 					let option = document.createElement("option");
 					option.value = oldValue;
 					option.text = oldValue;
@@ -189,14 +244,17 @@ function processStartPlayerChange(select) {
 		positionStates[select.id] = select.value;
 }
 
-function processSubPlayerChange(select) {
+function processSubPlayerChange(select, dontTryReplace) {
+	if (subSuggestRemoveSafeguards) return;
 	let oldValue = positionStates[select.id];
 	if (oldValue === select.value) return;
 		const playerSelects = document.getElementsByClassName("player-dropdown");
 		Array.from(playerSelects).forEach(s => {
 			if (s.id !== select.id) {
-				Array.from(s.children).find(e => e.value === select.value).remove(); 
-					let option = document.createElement("option");
+				console.log(Array.from(s.children), "finding", select.value)
+				if (Array.from(s.children).find(e => e.value === select.value)) Array.from(s.children).find(e => e.value === select.value).remove(); 
+				if (Array.from(s.children).find(e => e.value === oldValue))	return;
+				let option = document.createElement("option");
 					option.value = oldValue;
 					let player = players.find(p => p.name === oldValue);
 					option.text = oldValue === s.dataset.switchFor ? "No Substitution Selected" : `${oldValue}${player.status !== "playing" ? " (Current Bench)" : ""}`;
@@ -221,13 +279,13 @@ function generateLineup(hotswap) {
 	if (document.getElementById("invalidLineup").hidden === false) document.getElementById("invalidLineup").hidden = true;
 	const tableTrs = Array.from(document.getElementsByClassName("table-tr"));
 	let aPlayers = fetchAttendingPlayers();
-	let playerNames = aPlayers.filter(p => !Object.values(positionStates).includes(p.name));
 	document.getElementById("lineupChange").innerHTML = "Process Substitution";
 	document.getElementById("lineupHotswap").hidden = false;
 	document.getElementById("lineupClearSubs").hidden = false;
 	document.getElementById("benchListWrap").hidden = false;
 	if (document.getElementById("historyWrap").hidden) document.getElementById("historyWrap").hidden = false;
 	if (document.getElementById("playWrap").hidden) document.getElementById("playWrap").hidden = false;
+	//If start, add to sub history
 	if (players.every(p => p.status === "")) {
 		let newText = ["<strong>Original Lineup</strong>"];
 		playerSelects.forEach(ps => {
@@ -236,6 +294,7 @@ function generateLineup(hotswap) {
 		});
 		document.getElementById("history").innerHTML = newText.join("<br>");
 	}
+	//Add regular switches to sub history
 	addToSubHistory(playerSelects.filter(s => s.dataset.switchFor && s.value !== s.dataset.switchFor), hotswap);
 	let names = playerSelects.map(p => p.value);
 	for (let pl of players) {
@@ -269,13 +328,20 @@ function generateLineup(hotswap) {
 		}
 		if (!hotswap) pl[`times_${pl.status}`]++;
 	}
+
+	//REGEN DROPDOWNS
+	//dropdown should list all newly benched players
 	let subSuggestions = suggestSubs();
-	playerNames = playerNames.concat(players.filter(p => !playerNames.find(pn => pn.name === p.name) && Object.values(subSuggestions).includes(p.name)));
+	let playersOnBench = aPlayers.filter(pl => !Object.values(subSuggestions).includes(pl.name) && !pl.goalie);
+	console.log(subSuggestions, playersOnBench)
 	let processSubChangesPost = [];
+
+	//Go through each position
 	tableTrs.forEach(tr => {
 		let children = Array.from(tr.children);
 		for (let i = 0; i < children.length; i++) {
 			if (i !== 0) children[i].remove();
+			//Remove everything except first pos
 		}
 		let personTd = document.createElement("td");
 		personTd.innerHTML = positionStates[tr.dataset.position];
@@ -290,14 +356,25 @@ function generateLineup(hotswap) {
 		playerDropdown.dataset.switchFor = positionStates[tr.dataset.position];
 		playerDropdown.dataset.position = tr.dataset.position;
 		
-		let option = document.createElement("option");
-			if (!subSuggestions[positionStates[tr.dataset.position]]) option.selected = true;
-			option.value = positionStates[tr.dataset.position];
-			option.text = "No Substitution Selected";
-			playerDropdown.appendChild(option);
-			playerNames.forEach(pl => {
+		if (!subSuggestions[positionStates[tr.dataset.position]] || subSuggestions[positionStates[tr.dataset.position]] === positionStates[tr.dataset.position] || playersOnBench.find(pla => pla.name === positionStates[tr.dataset.position])) {
 			let option = document.createElement("option");
-			if (subSuggestions[positionStates[tr.dataset.position]] === pl.name) option.selected = true;
+				option.selected = (!subSuggestions[positionStates[tr.dataset.position]] || subSuggestions[positionStates[tr.dataset.position]] === positionStates[tr.dataset.position]) ? true : false;
+				option.value = positionStates[tr.dataset.position];
+				option.text = "No Substitution Selected";
+				playerDropdown.appendChild(option);
+		} 
+		if (subSuggestions[positionStates[tr.dataset.position]] && subSuggestions[positionStates[tr.dataset.position]] !== positionStates[tr.dataset.position]) {
+			let p = players.find(p => p.name === subSuggestions[positionStates[tr.dataset.position]])
+			let option = document.createElement("option");
+			option.selected = true;
+
+			option.value = p.name;
+			option.text = `${p.name}${p.status !== "playing" ? " (Current Bench)" : ""}`;
+			playerDropdown.appendChild(option);
+		}
+		playersOnBench.forEach(pl => {
+			if (pl.name === positionStates[tr.dataset.position]) return;
+			let option = document.createElement("option");
 			option.value = pl.name;
 			option.text = `${pl.name}${pl.status !== "playing" ? " (Current Bench)" : ""}`;
 			playerDropdown.appendChild(option);
@@ -307,8 +384,10 @@ function generateLineup(hotswap) {
 		tr.appendChild(selectTd);
 		processSubChangesPost.push(tr.dataset.position);
 	});
+	console.log("FINISHED, re-adding safeguards")
+	subSuggestRemoveSafeguards = false;
 	processSubChangesPost.forEach(trpos => {
-		processSubPlayerChange(document.getElementById(trpos));
+		processSubPlayerChange(document.getElementById(trpos), true);
 	});
 	updatePlaytime();
 }
@@ -355,14 +434,23 @@ function suggestSubs() {
 	currentPlaying.forEach(inp => {
 		posMap[getPlayerPosition(inp)] = inp.name;
 	});
+	console.log(posMap);
 	let subLine = currentPlaying.filter(p => !p.goalie).sort(function (a, b) {
 		if (b.consecutive !== a.consecutive) return (b.consecutive > a.consecutive) ? 1 : -1;
 		else if (b.formerGoalie) return -1;
 		else if (a.formerGoalie) return 1;
 		else return (b.rank > a.rank) ? 1 : -1;
 	}).slice(0, subs.length);
-	let subSuggestions = {};
 	let newPlayerList = currentPlaying.filter(pl => !pl.goalie && !subLine.find(sp => sp.name === pl.name)).concat(subs);
+	let subSuggestions = suggestSubsFromLineupList(newPlayerList, posMap);
+	console.log(subSuggestions)
+	subSuggestRemoveSafeguards = true;
+	return subSuggestions;
+}
+
+function suggestSubsFromLineupList(lineup, posMap) {
+	console.log(lineup, posMap)
+	let suggestions = [];
 	function checkDefenseAbility(player) {
 		if (!player.play_history["def"] || player.play_history["def"] < 2) return true;
 		else return false;
@@ -370,22 +458,21 @@ function suggestSubs() {
 	let filledPositions = [];
 	function setPlayer (player, pos) {
 		console.log(player.name, "sent to", pos);
-		subSuggestions[posMap[pos]] = player.name;
+		suggestions[posMap[pos]] = player.name;
 		filledPositions.push(pos);
 	}
-	newPlayerList = newPlayerList.sort((a, b) => a.rank - b.rank);
-	for (let i = 0; i < newPlayerList.length; i++) {
-		let player = newPlayerList[i];
+	lineup = lineup.sort((a, b) => a.rank - b.rank);
+	for (let i = 0; i < lineup.length; i++) {
+		let player = lineup[i];
 		console.log("Running for", player.name);
 		//NOTE: i is nth player-1 due to array structure
 		if (i === 0) setPlayer(player, checkDefenseAbility(player) ? "def0" : "cmid0");
 		else if (i === 1) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : (filledPositions.includes("cmid0") ? "cmid1" : "cmid0"));
 		else if (i === 2) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : "striker0");
-		else if (i === 3) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : (player.aSquad ? "strker0" : (!filledPositions.includes("cmid1") ? "cmid1" : "omid0")));
+		else if (i === 3) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : (player.aSquad && !filledPositions.includes("striker0") ? "strker0" : (!filledPositions.includes("cmid1") ? "cmid1" : "omid0")));
 		else if (i === 4) setPlayer(player, "def1");
 		else if (i === 5) setPlayer(player, `omid${filledPositions.includes("omid0") ? "1" : "0"}`);
 		else if (i === 6) setPlayer(player, !filledPositions.includes("striker0") ? "striker0" : `omid${filledPositions.includes("omid0") ? "1" : "0"}`);
 	}
-	console.log(subSuggestions)
-	return subSuggestions;
+	return suggestions;
 }
