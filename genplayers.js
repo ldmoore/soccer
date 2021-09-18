@@ -4,17 +4,17 @@ const players = [{
 	rank: 14
 }, {
 	name: "Cassie",
-	rank: 11
+	rank: 12
 }, {
 	name: "Clara",
-	rank: 10
+	rank: 11
 }, {
 	name: "John",
 	rank: 4,
 	aSquad: true
 }, {
 	name: "Jonas",
-	rank: 7
+	rank: 8
 }, {
 	name: "Risheek",
 	rank: 13
@@ -24,17 +24,18 @@ const players = [{
 	aSquad: true
 }, {
 	name: "Gyan",
-	rank: 6
+	rank: 6,
+	aSquad: true
 }, {
 	name: "Arham",
-	rank: 12
+	rank: 7
 }, {
 	name: "Cole",
 	rank: 1,
 	aSquad: true
 }, {
 	name: "Nora",
-	rank: 8
+	rank: 9
 }, {
 	name: "Reyaansh",
 	rank: 15
@@ -44,7 +45,7 @@ const players = [{
 	aSquad: true
 }, {
 	name: "Anaya",
-	rank: 9
+	rank: 10
 }, {
 	name: "Jonah",
 	rank: 3,
@@ -472,7 +473,7 @@ function suggestSubsFromLineupList(lineup, posMap) {
 		if (i === 0) setPlayer(player, checkDefenseAbility(player) ? "def0" : "cmid0");
 		else if (i === 1) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : (filledPositions.includes("cmid0") ? "cmid1" : "cmid0"));
 		else if (i === 2) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : "striker0");
-		else if (i === 3) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : (player.aSquad && !filledPositions.includes("striker0") ? "strker0" : (!filledPositions.includes("cmid1") ? "cmid1" : "omid0")));
+		else if (i === 3) setPlayer(player, !filledPositions.includes("def0") && checkDefenseAbility(player) ? "def0" : (player.aSquad && !filledPositions.includes("striker0") ? "striker0" : (!filledPositions.includes("cmid1") ? "cmid1" : "omid0")));
 		else if (i === 4) setPlayer(player, "def1");
 		else if (i === 5) setPlayer(player, `omid${filledPositions.includes("omid0") ? "1" : "0"}`);
 		else if (i === 6) setPlayer(player, !filledPositions.includes("striker0") ? "striker0" : `omid${filledPositions.includes("omid0") ? "1" : "0"}`);
