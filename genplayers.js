@@ -314,7 +314,10 @@ function generateLineup(hotswap) {
 		if (names.includes(pl.name)) {
 			//Playing
 			let posInPlayHistory = playerSelects.find(s => s.value === pl.name).id.match(/([a-z]+)/)[1];
-			pl.play_history[posInPlayHistory] = pl.play_history[posInPlayHistory] ? pl.play_history[posInPlayHistory]++ : 1;
+			if (!hotswap) {
+				if (!pl.play_history[posInPlayHistory]) pl.play_history[posInPlayHistory] = 0;
+				pl.play_history[posInPlayHistory]++;
+			}
 			if (pl.status !== "playing") {
 				pl.consecutive = hotswap ? 0 : 1;
 				pl.status = "playing";
@@ -457,7 +460,7 @@ function suggestSubsFromLineupList(lineup, posMap) {
 	}
 	let filledPositions = [];
 	function setPlayer (player, pos) {
-		console.log(player.name, "sent to", pos);
+		console.log(player.name, "sent to", pos, "PH", player.play_history);
 		suggestions[posMap[pos]] = player.name;
 		filledPositions.push(pos);
 	}
