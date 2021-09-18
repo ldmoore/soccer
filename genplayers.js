@@ -178,7 +178,7 @@ function createChart() {
 		}
 	})
 	let aSquadHere = playersHere.filter(p => p.aSquad && positionStates["goalie0"] !== p.name).sort((a, b) => a.rank - b.rank);
-	let startingASquad = aSquadHere.slice(0, aSquadHere.length-(playersHere.length === players.length ? 2 : 1));
+	let startingASquad = aSquadHere.slice(0, aSquadHere.length-((aSquadHere.length === 1 || playersHere.length === 8) ? 0 : (playersHere.length === players.length ? 2 : 1)));
 	let startingBSquad = playersHere.filter(p => !p.aSquad && positionStates["goalie0"] !== p.name).sort((a, b) => a.rank - b.rank).slice(0, Object.keys(positionStates).length-1-startingASquad.length);
 	let lineup = startingASquad.concat(startingBSquad);
 	let subSuggestions = suggestSubsFromLineupList(lineup, positionStates);
