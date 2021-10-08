@@ -1,7 +1,7 @@
 //Player List
 const players = [{
 	name: "Arjun",
-	rank: 14
+	rank: 13
 }, {
 	name: "Cassie",
 	rank: 12
@@ -17,7 +17,7 @@ const players = [{
 	rank: 8
 }, {
 	name: "Risheek",
-	rank: 13
+	rank: 15
 }, {
 	name: "Parker",
 	rank: 2,
@@ -38,7 +38,7 @@ const players = [{
 	rank: 9
 }, {
 	name: "Reyaansh",
-	rank: 15
+	rank: 14
 }, {
 	name: "Hawke",
 	rank: 3,
