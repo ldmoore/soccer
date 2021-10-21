@@ -10,7 +10,7 @@ const players = [{
 	rank: 11
 }, {
 	name: "John",
-	rank: 5,
+	rank: 4,
 	aSquad: true
 }, {
 	name: "Jonas",
@@ -48,7 +48,7 @@ const players = [{
 	rank: 10
 }, {
 	name: "Jonah",
-	rank: 4,
+	rank: 5,
 	aSquad: true
 }];
 
