@@ -14,7 +14,7 @@ const players = [{
 	aSquad: true
 }, {
 	name: "Jonas",
-	rank: 8
+	rank: 9
 }, {
 	name: "Risheek",
 	rank: 15
@@ -28,14 +28,14 @@ const players = [{
 	aSquad: true
 }, {
 	name: "Arham",
-	rank: 7
+	rank: 8
 }, {
 	name: "Cole",
 	rank: 1,
 	aSquad: true
 }, {
 	name: "Nora",
-	rank: 9
+	rank: 7
 }, {
 	name: "Reyaansh",
 	rank: 14
